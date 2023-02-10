@@ -41,7 +41,7 @@ class Venue(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     website_link = db.Column(db.String(120))
-    looking_for_talent=db.Column(db.Boolean)
+    seeking_talent=db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120))
 
     def __repr__(self):
@@ -62,7 +62,7 @@ class Artist(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     website_link = db.Column(db.String(120))
-    looking_for_talent=db.Column(db.Boolean)
+    seeking_venue=db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120))
 
     def __repr__(self):
@@ -108,36 +108,37 @@ def index():
 
 @app.route('/venues')
 def venues():
-  # TODO: replace with real venues data.
-  #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
-  data=[{
-    "city": "San Francisco",
-    "state": "CA",
-    "venues": [{
-      "id": 1,
-      "name": "The Musical Hop",
-      "num_upcoming_shows": 0,
-    }, {
-      "id": 3,
-      "name": "Park Square Live Music & Coffee",
-      "num_upcoming_shows": 1,
-    }]
-  }, {
-    "city": "New York",
-    "state": "NY",
-    "venues": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }]
-  return render_template('pages/venues.html', areas=data);
+    data = []   
+    venues = Venue.query.order_by(Venue.state).all()
+    #  Get today's date to check upcoming shows
+    now = datetime.now()    
+    for venue in venues:
+      venue_shows = Show.query.filter_by(venue_id=venue.id).all()
+      num_upcoming = 0
+    for show in venue_shows:
+      if show.start_time > now:
+        num_upcoming += 1
+
+        venues_list.append({
+          "id": venue.id,
+          "name": venue.name,
+          "num_upcoming_shows": num_upcoming
+          })
+
+        data.append({
+              "venues": venues_list
+          })
+    return render_template('pages/venues.html', areas=data);
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
   # TODO: implement search on venues with partial string search. Ensure it is case-insensitive.
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
+  search_term = request.form.get('search_term').strip()
+  venues = Venue.query.filter(Venue.name.ilike('%' + search_term + '%')).all()
+
+
   response={
     "count": 1,
     "data": [{
@@ -239,6 +240,8 @@ def show_venue(venue_id):
 def create_venue_form():
   form = VenueForm()
   return render_template('forms/new_venue.html', form=form)
+
+  # Add new Venue
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
@@ -444,6 +447,7 @@ def create_artist_form():
   form = ArtistForm()
   return render_template('forms/new_artist.html', form=form)
 
+# Add new artist
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
     error = False
@@ -454,7 +458,13 @@ def create_artist_submission():
         state=form.state.data
         phone=form.phone.data
         genres=form.genres.data
-        new_artist = Artist(name=name,city=city,state=state,phone=phone,genres=genres)
+        facebook_link=form.facebook_link.data
+        image_link=form.image_link.data
+        website_link=form.website_link.data
+        seeking_venue=form.seeking_venue.data
+        seeking_description=form.seeking_description.data
+        new_artist = Artist(name=name,city=city,state=state,phone=phone,genres=genres,facebook_link=facebook_link,image_link=image_link,
+          website_link=website_link,seeking_venue=seeking_venue,seeking_description=seeking_description)
         db.session.add(new_artist)
         db.session.commit()
     except():
