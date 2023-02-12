@@ -78,7 +78,7 @@ class Show(db.Model):
     venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
 
     def __repr__(self):
-        return f'<Show {self.id} {self.start_time   }>'
+        return f'<Show {self.id} {self.start_time}>'
    
 #----------------------------------------------------------------------------#
 # Filters.
@@ -110,13 +110,14 @@ def index():
 def venues():
   try:
     venues=Venue.query.order_by(Venue.city).all()
-    data={}
+    data=[]
     venue_list=[]
     for venue in venues:
       # Reset num_upcoming_shows =0
       num_upcoming_shows=0
       # Get all shows for given venue
-      shows=Show.query.get(venue_id=venue.id)
+      shows=Show.query.filter_by(venue_id=venue.id)
+      print(shows)
       for show in shows:
         if show.start_time > datetime.now():
           num_upcoming_shows+=1
@@ -124,7 +125,8 @@ def venues():
         else:
           num_upcoming_shows=0
           venue_list.append ["id": venue.id,"name": venue.name,"num_upcoming_shows": num_upcoming_shows]  
-      data.update({"city":venue.city,"state":venue.state,"venues":venue_list})
+      # Update List    
+      data.append({"city":venue.city,"state":venue.state,"venues":venue_list})
     return render_template('pages/venues.html', areas=data)
   except:
     flash("Error")    
@@ -142,7 +144,7 @@ def shows():
         "id":show.id,
         "name":show.name
       })
-    return render_template('pages/shows.html', shows=shows)  
+    return render_template('pages/shows.html', shows=values)  
   except:
     flash("Error occurred")   
 
@@ -181,7 +183,26 @@ def search_venues():
 def show_venue(venue_id):
   try:
     venue=Venue.query.get(venue_id)
-    return render_template('pages/show_venue.html', venue=venue)  
+    data={}
+    if venue.start_time > datetime.now():
+      num_upcoming_shows +=1
+    else:
+      num_upcoming_shows=0
+    data.append({
+      "id": venue.id,
+      "name": venue.name,
+      "genres": venue.genres,
+      "address": venue.address,
+      "city": venue.city,
+      "state": venue.state,
+      "phone": venue.phone,
+      "website": venue.website,
+      "facebook_link": venue.facebook_link,
+      "seeking_talent": venue.seeking_talent,
+      "seeking_description": venue.seeking_description,
+      "image_link": venue.image_link
+    })  
+    return render_template('pages/show_venue.html', venue=data)  
   except:    
     flash("Error Occured")
 
@@ -384,8 +405,6 @@ def create_show_submission():
     db.session.rollback()
   finally:
     db.session.close()
-
-
   
 @app.errorhandler(404)
 def not_found_error(error):
