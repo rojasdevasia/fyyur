@@ -214,12 +214,37 @@ def search_venues():
 def show_venue(venue_id):
   try:
     data=[]
-    venue=Venue.query.get(venue_id)
-    show=Show.query.get()
-    if venue.start_time > datetime.now():
-      num_upcoming_shows +=1
-    else:
-      num_upcoming_shows=0
+    upcoming_shows_count=0
+    past_shows_count=0
+    past_shows=[]
+    upcoming_shows=[]
+
+    venues=Venue.query.filter_by(id=venue_id)
+
+    for venue in venues:
+      print(venue)
+      shows=Show.query.filter_by(venue_id=venue_id)
+      for show in shows:
+        print(show)
+        artists=Artist.query.filter_by(id=show.artist_id)
+        for artist in artists:
+          print(artist)
+          if show.start_time > datetime.now():
+            upcoming_shows_count +=1
+            upcoming_shows.append({
+              "artist_id": artist.id,
+              "artist_name": artist.name,
+              "artist_image_link": artist.image_link,
+              "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M:%S")
+              })
+          else:
+            past_shows_count +=1
+            past_shows.append({
+              "artist_id": artist.id,
+              "artist_name": artist.name,
+              "artist_image_link": artist.image_link,
+              "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M:%S")
+        })
     data.append({
       "id": venue.id,
       "name": venue.name,
@@ -228,14 +253,20 @@ def show_venue(venue_id):
       "city": venue.city,
       "state": venue.state,
       "phone": venue.phone,
-      "website": venue.website,
+      "website": venue.website_link,
       "facebook_link": venue.facebook_link,
       "seeking_talent": venue.seeking_talent,
       "seeking_description": venue.seeking_description,
-      "image_link": venue.image_link
+      "image_link": venue.image_link,
+      "past_shows":past_shows,
+      "upcoming_shows":upcoming_shows,
+      "past_shows_count":past_shows_count,
+      "upcoming_shows_count":upcoming_shows_count
     })  
+    print(data)
     return render_template('pages/show_venue.html', venue=data)  
-  except:    
+  except Exception as e:
+    print(e)    
     flash("Error Occured")
 
 #  Create Venue
@@ -269,9 +300,10 @@ def create_venue_submission():
         db.session.commit()
         flash('Venue ' + request.form['name'] + ' was successfully listed!')
         return render_template('pages/home.html')
-    except:
+    except Exception as e:
         db.session.rollback()
         flash('An error occurred. Venue could not be listed.')
+        print(e)
     finally:
         db.session.close()
 
@@ -281,8 +313,9 @@ def create_venue_submission():
 def delete_venue(venue_id):
   try:
     return None
-  except:
+  except Exception as e:
     flash("Error Occurred!") 
+    print(e)
 
 #Implement search on artists with partial string search. Ensure it is case-insensitive.
 #  ---------------------------------------------------------------
@@ -293,8 +326,9 @@ def search_artists():
     search_term = request.form.get('search_term')
     artists = Artist.query.filter(Artist.name.like('%' + search_term + '%')).all()
     return render_template('pages/search_artists.html', results=artists, search_term=request.form.get('search_term', ''))
-  except:
+  except Exception as e:
     flash("Error Occurred!")  
+    print(e)
 
 # Shows the artist page with the given artist_id
 #  ----------------------------------------------------------------
@@ -304,8 +338,9 @@ def show_artist(artist_id):
   try:
     artist=Artist.query.get(artist_id)
     return render_template('pages/show_venue.html', artist=artist)  
-  except:    
+  except Exception as e:    
     flash("Error Occured")
+    print(e)
 
 #  Update
 #  ----------------------------------------------------------------
@@ -329,8 +364,9 @@ def edit_artist(artist_id):
       "image_link": artist.image_link
     }
     return render_template('forms/edit_artist.html', form=form, artist=artist)
-  except:
+  except Exception as e:
     flash("Error Occurred")
+    print(e)
   
 # Take values from the form submitted, and update existing artist record with ID <artist_id> using the new attributes
 #  ----------------------------------------------------------------
@@ -356,9 +392,10 @@ def edit_artist_submission(artist_id):
     db.session.commit()
     flash('Artist ' + request.form['name'] + ' was successfully listed!')
     return redirect(url_for('show_artist', artist_id=artist_id))
-  except:
+  except Exception as e:
     db.session.rollback()
     flash('An error occurred. Venue could not be listed.')
+    print(e)
   finally:
     db.session.close()
   
@@ -408,8 +445,9 @@ def create_artist_submission():
         db.session.commit()
         flash('Artist ' + request.form['name'] + ' was successfully listed!')
         return render_template('pages/home.html')
-    except:
+    except Exception as e:
         db.session.rollback()
+        print(e)
     finally:
         db.session.close()     
 
