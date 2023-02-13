@@ -112,23 +112,29 @@ def venues():
     venues=Venue.query.order_by(Venue.city).all()
     data=[]
     venue_list=[]
+    # Reset num_upcoming_shows =0
+    num_upcoming_shows=0
     for venue in venues:
-      # Reset num_upcoming_shows =0
-      num_upcoming_shows=0
       # Get all shows for given venue
       shows=Show.query.filter_by(venue_id=venue.id)
       print(shows)
       for show in shows:
         if show.start_time > datetime.now():
           num_upcoming_shows+=1
-          venue_list.append ["id": venue.id,"name": venue.name,"num_upcoming_shows": num_upcoming_shows]
+          venue_list.append ({"id":venue.id,"name":venue.name,"num_upcoming_shows":num_upcoming_shows})
         else:
           num_upcoming_shows=0
-          venue_list.append ["id": venue.id,"name": venue.name,"num_upcoming_shows": num_upcoming_shows]  
-      # Update List    
-      data.append({"city":venue.city,"state":venue.state,"venues":venue_list})
+          venue_list.append ({"id":venue.id,"name":venue.name,"num_upcoming_shows":num_upcoming_shows})
+      # Update List 
+      print(venue_list)
+      if(len(venue_list)>0):
+        data.append({"city":venue.city,"state":venue.state,"venues":venue_list})
+      else:
+        data.append({"city":venue.city,"state":venue.state,"venues":"No Venues"})  
+      print(data)
     return render_template('pages/venues.html', areas=data)
-  except:
+  except Exception as e: 
+    print(e)
     flash("Error")    
 
 #  Displays list of shows at /shows
@@ -138,14 +144,25 @@ def venues():
 def shows():
   try:
     shows=Show.query.all()
-    values=[]
+    # data=[]
+    show_details=[]
     for show in shows:
-      values.append({
-        "id":show.id,
-        "name":show.name
-      })
-    return render_template('pages/shows.html', shows=values)  
-  except:
+      artist=Artist.query.filter_by(id=show.artist_id)
+      venue=Venue.query.filter_by(id=show.venue_id)
+      print(artist[0])
+      print(venue[0])
+      show_details.append({"venue_id":show.venue_id,
+      "venue_name":venue[0].name,
+      "artist_id":artist[0].id,
+      "artist_name":artist[0].name,
+      "artist_image_link":artist[0].image_link,
+      "start_time":show.start_time.strftime("%m/%d/%Y, %H:%M:%S")})
+      print(show_details)
+    # data.append(show_details) 
+    # print(data) 
+    return render_template('pages/shows.html', shows=show_details)  
+  except Exception as e: 
+    print(e)
     flash("Error occurred")   
 
  #  Artists
@@ -154,7 +171,7 @@ def shows():
 @app.route('/artists')
 def artists():
   try:
-    artists = Artist.query.order_by(Artist.name).all()  
+    artists = Artist.query.all()  
     values = []
     for artist in artists:
           values.append({
@@ -171,10 +188,24 @@ def artists():
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
   try:
+    venue_list=[]
+    response=[]
+    num_upcoming_show=0
     search_term = request.form.get('search_term')
+    print("Search Term is:"+search_term)
     venues = Venue.query.filter_by(Venue.name.like('%' + search_term + '%')).all()
-    return render_template('pages/search_venues.html', results=venues)
-  except:
+    for venue in venues:
+      show=Show.query.filter_by(id=venue.id).all()
+      if len(show)> 0 and show.start_time > datetime.now():
+        num_upcoming_show +=1
+        venue_list.append({"id":venue.id,"name":venue.name,"num_upcoming_show":num_upcoming_show})
+      else:
+        num_upcoming_show =0
+        venue_list.append({"id":venue.id,"name":venue.name,"num_upcoming_show":num_upcoming_show})
+      response.append({"count":len(venue),"data":venue_list})  
+    return render_template('pages/search_venues.html', results=response)
+  except Exception as e:
+    print(e)
     flash("Error Occurred!")  
 
 #Shows the venue page with the given venue_id
@@ -182,8 +213,9 @@ def search_venues():
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
   try:
+    data=[]
     venue=Venue.query.get(venue_id)
-    data={}
+    show=Show.query.get()
     if venue.start_time > datetime.now():
       num_upcoming_shows +=1
     else:
@@ -219,7 +251,7 @@ def create_venue_form():
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
     try:
-        form = VenueForm()
+        # form = VenueForm()
         name=request.form.get('name')
         city=request.form.get('city')
         state=request.form.get('state')
@@ -239,14 +271,15 @@ def create_venue_submission():
         return render_template('pages/home.html')
     except:
         db.session.rollback()
-        flash('An error occurred. Venue ' + data.name + ' could not be listed.')
+        flash('An error occurred. Venue could not be listed.')
     finally:
         db.session.close()
+
+# Delete Venue ,Cascade       
         
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
   try:
-
     return None
   except:
     flash("Error Occurred!") 
@@ -325,7 +358,7 @@ def edit_artist_submission(artist_id):
     return redirect(url_for('show_artist', artist_id=artist_id))
   except:
     db.session.rollback()
-    flash('An error occurred. Venue ' + data.name + ' could not be listed.')
+    flash('An error occurred. Venue could not be listed.')
   finally:
     db.session.close()
   
@@ -392,7 +425,7 @@ def create_shows():
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
   try:
-    form = ShowForm()
+    # form = ShowForm()
     artist_id=request.form.get('artist_id')
     venue_id=request.form.get('venue_id')
     start_time=request.form.get('start_time')
@@ -401,7 +434,8 @@ def create_show_submission():
     db.session.commit()
     flash('Show was successfully listed!')
     return render_template('pages/home.html')
-  except:
+  except Exception as e: 
+    print(e)
     db.session.rollback()
   finally:
     db.session.close()
