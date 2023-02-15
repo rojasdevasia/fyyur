@@ -185,32 +185,56 @@ def artists():
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
+
   try:
-    venue_list=[]
+    data=[]
     response=[]
-    num_upcoming_show=0
+    num_upcoming_shows=0
     search_term = request.form.get('search_term')
-    print("Search Term is:"+search_term)
-    venues = Venue.query.filter(Venue.name.like('%' + search_term + '%')).all()
-    # category = Category.query.filter(Category.title.like(category_param_value + "%")).all()
+    venues = Venue.query.filter(Venue.name.ilike('%' + search_term + '%')).all()
     for venue in venues:
-      shows=Show.query.filter_by(venue_id=venue.id).all()
-      if len(shows)> 0:
-        for show in shows:
-          if show.start_time > datetime.now():
-            num_upcoming_show +=1
-            venue_list.append({"id":venue.id,"name":venue.name,"num_upcoming_show":num_upcoming_show})
-          else:
-            num_upcoming_show =0
-            venue_list.append({"id":venue.id,"name":venue.name,"num_upcoming_show":num_upcoming_show})
-      else:
-         venue_list.append({"id":venue.id,"name":venue.name,"num_upcoming_show":0})   
-      response.append({"count":len(venues),"data":venue_list})  
-      print(response)
-    return render_template('pages/search_venues.html', results=response)
+      shows=Show.query.filter_by(venue_id=Venue.id)
+      for show in shows:
+        if show.start_time > datetime.now():
+          num_upcoming_shows+=1
+          data.append({
+            "id":venue.id,
+            "name":venue.name,
+            "num_upcoming_shows":num_upcoming_shows
+          })  
+    response={
+      "count": len(venues),
+      "data": data
+    }
+    return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
   except Exception as e:
     print(e)
-    flash("Error Occurred!")  
+  # try:
+  #   venue_list=[]
+  #   response=[]
+  #   num_upcoming_show=0
+  #   search_term = request.form.get('search_term')
+  #   print("Search Term is:"+search_term)
+  #   venues = Venue.query.filter(Venue.name.ilike('%' + search_term + '%')).all()
+  #   # category = Category.query.filter(Category.title.like(category_param_value + "%")).all()
+  #   for venue in venues:
+  #     shows=Show.query.filter_by(venue_id=venue.id).all()
+  #     if len(shows)> 0:
+  #       for show in shows:
+  #         if show.start_time > datetime.now():
+  #           num_upcoming_show +=1
+  #           venue_list.append({"id":venue.id,"name":venue.name,"num_upcoming_show":num_upcoming_show})
+  #         else:
+  #           num_upcoming_show =0
+  #           venue_list.append({"id":venue.id,"name":venue.name,"num_upcoming_show":num_upcoming_show})
+  #     else:
+  #        venue_list.append({"id":venue.id,"name":venue.name,"num_upcoming_show":0})   
+  #     response.append({"count":len(venues),"data":venue_list})  
+  #     print(response)
+  #   return render_template('pages/search_venues.html', results=response)
+  # except Exception as e:
+  #   print(e)
+  #   flash("Error Occurred!")  
 
 #Shows the venue page with the given venue_id
 #  ----------------------------------------------------------------
@@ -326,12 +350,11 @@ def search_artists():
     response=[]
     data=[]
     num_upcoming_shows=0
-    count=0
     search_term = request.form.get('search_term')
     print(search_term)
-    artists = Artist.query.filter(Artist.name.like('%' + search_term + '%')).all()
+    artists = Artist.query.filter(Artist.name.ilike('%' + search_term + '%')).all()
     for artist in artists:
-      shows=Show.query.filter_by(artist_id=artist.id)
+      shows=Show.query.filter_by(artist_id=Artist.id)
       for show in shows:
         if show.start_time > datetime.now():
           num_upcoming_shows +=1
@@ -340,9 +363,9 @@ def search_artists():
             "name":artist.name,
             "num_upcoming_shows":num_upcoming_shows
           })
-    count=len(artists)      
+       
     response.append({
-      "count":count,
+      "count":len(artists),
       "data":data
     })
     print(response)    
